@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wish Simulator</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --gold: #e8c88a;
+    --gold-bright: #ffe9b0;
+    --bg-dark: #0d0e1a;
+    --panel: #171a2b;
+    --panel-2: #1f2338;
+    --border: #33375a;
+    --purple: #7c6bd6;
+    --five: linear-gradient(135deg, #e8b64a, #f7d98a);
+    --four: linear-gradient(135deg, #a06bd6, #d0b0f0);
+    --three: linear-gradient(135deg, #5f7aa8, #a9c0e0);
+    --text: #eae6f5;
+    --muted: #9a9ab0;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background:
+      radial-gradient(circle at 20% 10%, #2a2350 0%, transparent 45%),
+      radial-gradient(circle at 80% 90%, #1a2a4a 0%, transparent 45%),
+      var(--bg-dark);
+    color: var(--text);
+    padding: 24px 16px 60px;
+  }
+
+  h1 {
+    text-align: center;
+    font-size: 2rem;
+    margin: 0 0 4px;
+    background: linear-gradient(135deg, var(--gold-bright), var(--purple));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    letter-spacing: 1px;
+  }
+
+  .subtitle {
+    text-align: center;
+    color: var(--muted);
+    margin-bottom: 28px;
+    font-size: 0.95rem;
+  }
+
+  .container {
+    max-width: 960px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+  }
+
+  .panel h2 {
+    margin-top: 0;
+    font-size: 1.1rem;
+    color: var(--gold);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px;
+  }
+
+  /* Banner select */
+  #char-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 10px;
+  }
+
+  .char-card {
+    background: var(--panel-2);
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 8px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+
+  .char-card:hover {
+    border-color: var(--gold);
+    transform: translateY(-2px);
+  }
+
+  .char-card.selected {
+    border-color: var(--gold);
+    background: linear-gradient(135deg, #3a3060, #2a2545);
+    box-shadow: 0 0 12px rgba(232, 200, 138, 0.4);
+  }
+
+  #start-btn {
+    margin-top: 16px;
+    width: 100%;
+  }
+
+  /* Buttons */
+  button {
+    font-family: inherit;
+    font-size: 0.95rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 18px;
+    cursor: pointer;
+    transition: transform 0.1s ease, filter 0.15s ease;
+    color: #1a1425;
+  }
+
+  button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  button:not(:disabled):hover {
+    filter: brightness(1.08);
+    transform: translateY(-1px);
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--gold-bright), var(--gold));
+  }
+
+  .btn-secondary {
+    background: linear-gradient(135deg, #b0a8d8, #8878c0);
+    color: #201b35;
+  }
+
+  .btn-danger {
+    background: linear-gradient(135deg, #d68a8a, #a85050);
+    color: #2a1010;
+  }
+
+  .btn-excel {
+    background: linear-gradient(135deg, #6fd08a, #3aa860);
+    color: #0c2314;
+  }
+
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .custom-wish {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 6px 10px;
+  }
+
+  .custom-wish label {
+    font-size: 0.85rem;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  #wish-custom-amount {
+    width: 56px;
+    font-family: inherit;
+    font-size: 0.95rem;
+    font-weight: 600;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 8px;
+    background: var(--panel);
+    color: var(--gold-bright);
+    text-align: center;
+  }
+
+  /* Status bar */
+  #status-bar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+  }
+
+  .stat {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    text-align: center;
+  }
+
+  .stat .label {
+    font-size: 0.75rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .stat .value {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--gold-bright);
+    margin-top: 4px;
+  }
+
+  #hidden-until-start { display: none; }
+
+  /* Pull results */
+  #results {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-height: 40px;
+  }
+
+  .result-card {
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    min-width: 110px;
+    text-align: center;
+    animation: pop 0.25s ease;
+  }
+
+  @keyframes pop {
+    from { transform: scale(0.7); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  .r5 { background: var(--five); color: #3a2400; }
+  .r4 { background: var(--four); color: #2a1440; }
+  .r3 { background: var(--three); color: #10203a; }
+
+  .result-card .stars { display: block; font-size: 0.75rem; margin-bottom: 2px; }
+
+  /* history table */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+  }
+
+  th, td {
+    padding: 8px 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+
+  th {
+    color: var(--gold);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+  }
+
+  tr.limited td:nth-child(3) { color: var(--gold-bright); font-weight: 700; }
+
+  #history-empty {
+    color: var(--muted);
+    font-style: italic;
+    padding: 10px 0;
+  }
+
+  .footnote {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.8rem;
+    margin-top: 10px;
+  }
+
+  #banner-name {
+    color: var(--gold-bright);
+  }
+</style>
+</head>
+<body>
+
+<h1>🎇 Wish Simulator</h1>
+<p class="subtitle">Simulador de banner limitado &mdash; baseado no sistema de pity do Genshin Impact</p>
+
+<div class="container">
+
+  <!-- Banner selection -->
+  <div class="panel" id="select-panel">
+    <h2>Escolha o personagem do banner limitado</h2>
+    <div id="char-grid"></div>
+    <button id="start-btn" class="btn-primary" disabled>Confirmar e começar a desejar</button>
+  </div>
+
+  <!-- Everything below only shows after a character is chosen -->
+  <div id="hidden-until-start" style="flex-direction:column; gap:20px;">
+
+    <div class="panel">
+      <h2>Atirando em: <span id="banner-name"></span></h2>
+      <div class="btn-row">
+        <button id="change-char-btn" class="btn-secondary">Trocar personagem</button>
+      </div>
+      <div id="status-bar">
+        <div class="stat"><div class="label">Pity 5★</div><div class="value" id="pity5-val">0</div></div>
+        <div class="stat"><div class="label">Pity 4★</div><div class="value" id="pity4-val">0</div></div>
+        <div class="stat"><div class="label">Garantido</div><div class="value" id="guaranteed-val">Não</div></div>
+        <div class="stat"><div class="label">Total de desejos</div><div class="value" id="total-val">0</div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Desejar</h2>
+      <div class="btn-row">
+        <button id="wish1-btn" class="btn-primary">Desejo x1</button>
+        <button id="wish10-btn" class="btn-primary">Desejo x10</button>
+        <div class="custom-wish">
+          <label for="wish-custom-amount">Quantidade</label>
+          <input type="number" id="wish-custom-amount" min="1" max="10" value="1" />
+          <button id="wish-custom-btn" class="btn-primary">Desejar</button>
+        </div>
+        <button id="reset-btn" class="btn-danger">Reiniciar</button>
+      </div>
+      <br>
+      <div id="results"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Resumo</h2>
+      <div id="status-bar">
+        <div class="stat"><div class="label">5 estrelas</div><div class="value" id="c5-val">0</div></div>
+        <div class="stat"><div class="label">4 estrelas</div><div class="value" id="c4-val">0</div></div>
+        <div class="stat"><div class="label">3 estrelas</div><div class="value" id="c3-val">0</div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Histórico de 5★</h2>
+      <div id="history-empty">Nenhum 5★ obtido ainda.</div>
+      <table id="history-table" style="display:none;">
+        <thead>
+          <tr><th>Desejo Nº</th><th>Personagem/Item</th><th>Tipo</th><th>Pity</th></tr>
+        </thead>
+        <tbody id="history-body"></tbody>
+      </table>
+      <br>
+      <div class="btn-row">
+        <button id="excel-btn" class="btn-excel" disabled>⬇ Baixar planilha Excel (.xlsx)</button>
+      </div>
+      <p class="footnote">Gera o arquivo <code>pity_5estrelas.xlsx</code> com o histórico completo de 5★</p>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ---------------------------------------------------------------
+// Data, mirrored from main.py
+// ---------------------------------------------------------------
+const mochileiro = ["Qiqi", "Dehya", "Yumemizuki Mizuki", "Tighnari", "Mona", "Keqing", "Jean", "Diluc"];
+const limitado = ["Sandrone", "Citlali", "Columbina", "Raiden Shogun"];
+const quatroestrelas = ["Aino", "Amber", "Barbara", "Beidou", "Bennett", "Candace", "Charlotte", "Chevreuse", "Chongyun", "Collei", "Dahlia", "Diona", "Dori", "Faruzan", "Fischl", "Freminet", "Gaming", "Gorou", "Iansan", "Ifa", "Illuga", "Jahoda", "Kachina", "Kaeya", "Kaveh", "Kirara", "Kujou Sara", "Kuki Shinobu", "Lan Yan", "Layla", "Lisa", "Lynette", "Mika", "Ningguang", "Noelle", "Ororon", "Prune", "Razor", "Rosaria", "Sayu", "Sethos", "Shikanoin Heizou", "Sucrose", "Thoma", "Xiangling", "Xingqiu", "Xinyan", "Yanfei", "Yaoyao", "Yun Jin"];
+const armatresstars = ["Messenger", "Raven Bow", "Recurve Bow", "Sharpshooter's Oath", "Slingshot", "Emerald Orb", "Magic Guide", "Otherworldly Story", "Thrilling Tales of Dragon Slayers", "Twin Nephrite", "Bloodtainted Greatsword", "Debate Club", "Ferrous Shadow", "Skyrider Greatsword", "White Iron Greatsword", "Black Tassel", "Halberd", "White Tassel", "Cool Steel", "Dark Iron Sword", "Fillet Blade", "Harbinger of Dawn", "Skyrider Sword", "Traveler's Handy Sword"];
+
+const STAR_SYMBOL = { 5: "⭐⭐⭐⭐⭐", 4: "⭐⭐⭐⭐", 3: "⭐⭐⭐" };
+
+function chanceCinco(pity) {
+  if (pity >= 90) return 1.0;
+  if (pity >= 74) return 0.006 + 0.06 * (pity - 73);
+  return 0.006;
+}
+
+function chanceQuatro(pity) {
+  if (pity >= 10) return 1.0;
+  if (pity === 9) return 0.551;
+  return 0.051;
+}
+
+function pick(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+// ---------------------------------------------------------------
+// State
+// ---------------------------------------------------------------
+let state = { pity5: 0, pity4: 0, guaranteed5: false };
+let counts = { 5: 0, 4: 0, 3: 0 };
+let fiveStarLog = [];
+let wishNumber = 0;
+let personagemLimitado = null;
+
+function desejo() {
+  state.pity5 += 1;
+  state.pity4 += 1;
+
+  if (Math.random() < chanceCinco(state.pity5)) {
+    const pityUsed = state.pity5;
+    state.pity5 = 0;
+    state.pity4 = 0;
+    let item, bannerType;
+    if (state.guaranteed5 || Math.random() < 0.5) {
+      item = personagemLimitado;
+      bannerType = "Limitado";
+      state.guaranteed5 = false;
+    } else {
+      item = pick(mochileiro);
+      bannerType = "Mochileiro";
+      state.guaranteed5 = true;
+    }
+    return { rarity: 5, item, pityUsed, bannerType };
+  }
+
+  if (Math.random() < chanceQuatro(state.pity4)) {
+    state.pity4 = 0;
+    return { rarity: 4, item: pick(quatroestrelas), pityUsed: null, bannerType: null };
+  }
+
+  return { rarity: 3, item: pick(armatresstars), pityUsed: null, bannerType: null };
+}
+
+// ---------------------------------------------------------------
+// UI: character selection
+// ---------------------------------------------------------------
+const charGrid = document.getElementById("char-grid");
+const startBtn = document.getElementById("start-btn");
+
+limitado.forEach(name => {
+  const card = document.createElement("div");
+  card.className = "char-card";
+  card.textContent = name;
+  card.addEventListener("click", () => {
+    document.querySelectorAll(".char-card").forEach(c => c.classList.remove("selected"));
+    card.classList.add("selected");
+    personagemLimitado = name;
+    startBtn.disabled = false;
+  });
+  charGrid.appendChild(card);
+});
+
+startBtn.addEventListener("click", () => {
+  if (!personagemLimitado) return;
+  resetAll();
+  document.getElementById("select-panel").style.display = "none";
+  document.getElementById("hidden-until-start").style.display = "flex";
+  document.getElementById("banner-name").textContent = personagemLimitado;
+});
+
+document.getElementById("change-char-btn").addEventListener("click", () => {
+  document.getElementById("hidden-until-start").style.display = "none";
+  document.getElementById("select-panel").style.display = "block";
+});
+
+// ---------------------------------------------------------------
+// UI: wishing
+// ---------------------------------------------------------------
+const resultsEl = document.getElementById("results");
+const historyBody = document.getElementById("history-body");
+const historyTable = document.getElementById("history-table");
+const historyEmpty = document.getElementById("history-empty");
+const excelBtn = document.getElementById("excel-btn");
+
+function renderResult(res) {
+  const card = document.createElement("div");
+  card.className = "result-card r" + res.rarity;
+  card.innerHTML = `<span class="stars">${STAR_SYMBOL[res.rarity]}</span>${res.item}`;
+  resultsEl.prepend(card);
+  while (resultsEl.children.length > 30) {
+    resultsEl.removeChild(resultsEl.lastChild);
+  }
+}
+
+function renderStatus() {
+  document.getElementById("pity5-val").textContent = state.pity5;
+  document.getElementById("pity4-val").textContent = state.pity4;
+  document.getElementById("guaranteed-val").textContent = state.guaranteed5 ? "Sim" : "Não";
+  document.getElementById("total-val").textContent = wishNumber;
+  document.getElementById("c5-val").textContent = counts[5];
+  document.getElementById("c4-val").textContent = counts[4];
+  document.getElementById("c3-val").textContent = counts[3];
+}
+
+function renderHistory() {
+  if (fiveStarLog.length === 0) {
+    historyEmpty.style.display = "block";
+    historyTable.style.display = "none";
+    excelBtn.disabled = true;
+    return;
+  }
+  historyEmpty.style.display = "none";
+  historyTable.style.display = "table";
+  excelBtn.disabled = false;
+  historyBody.innerHTML = "";
+  fiveStarLog.forEach(row => {
+    const tr = document.createElement("tr");
+    if (row["Tipo"] === "Limitado") tr.classList.add("limited");
+    tr.innerHTML = `<td>${row["Desejo Nº"]}</td><td>${row["Personagem/Item"]}</td><td>${row["Tipo"]}</td><td>${row["Pity"]}</td>`;
+    historyBody.appendChild(tr);
+  });
+}
+
+function doWish() {
+  wishNumber += 1;
+  const res = desejo();
+  counts[res.rarity] += 1;
+  renderResult(res);
+
+  if (res.rarity === 5) {
+    fiveStarLog.push({
+      "Desejo Nº": wishNumber,
+      "Personagem/Item": res.item,
+      "Tipo": res.bannerType,
+      "Pity": res.pityUsed,
+    });
+    renderHistory();
+  }
+  renderStatus();
+}
+
+document.getElementById("wish1-btn").addEventListener("click", () => {
+  resultsEl.innerHTML = "";
+  doWish();
+});
+document.getElementById("wish10-btn").addEventListener("click", () => {
+  resultsEl.innerHTML = "";
+  for (let i = 0; i < 10; i++) doWish();
+});
+document.getElementById("wish-custom-btn").addEventListener("click", () => {
+  const input = document.getElementById("wish-custom-amount");
+  let amount = Math.round(Number(input.value));
+  if (!Number.isFinite(amount)) amount = 1;
+  amount = Math.min(10, Math.max(1, amount));
+  input.value = amount;
+  resultsEl.innerHTML = "";
+  for (let i = 0; i < amount; i++) doWish();
+});
+
+function resetAll() {
+  state = { pity5: 0, pity4: 0, guaranteed5: false };
+  counts = { 5: 0, 4: 0, 3: 0 };
+  fiveStarLog = [];
+  wishNumber = 0;
+  resultsEl.innerHTML = "";
+  renderStatus();
+  renderHistory();
+}
+
+document.getElementById("reset-btn").addEventListener("click", () => {
+  if (!confirm("Reiniciar todo o progresso (pity, contadores e histórico)?")) return;
+  resetAll();
+});
+
+// ---------------------------------------------------------------
+// Excel export (mirrors df.to_excel("pity_5estrelas.xlsx"))
+// ---------------------------------------------------------------
+excelBtn.addEventListener("click", () => {
+  if (fiveStarLog.length === 0) return;
+  const ws = XLSX.utils.json_to_sheet(fiveStarLog);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+  XLSX.writeFile(wb, "pity_5estrelas.xlsx");
+});
+
+renderStatus();
+renderHistory();
+</script>
+
+</body>
+</html>
